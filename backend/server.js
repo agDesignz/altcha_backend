@@ -5,7 +5,7 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
 // Import altcha functions - adjust names to match the package API
-import { generateChallenge, verifySolution } from "altcha-lib";
+import { createChallenge, verifySolution } from "altcha-lib";
 
 dotenv.config();
 
