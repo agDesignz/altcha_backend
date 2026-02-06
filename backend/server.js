@@ -11,19 +11,22 @@ app.use(helmet());
 app.use(morgan("combined"));
 app.use(express.json());
 
-// CORS config: allow listing from ALLOWED_ORIGINS env var
-// const allowed = (process.env.ALLOWED_ORIGINS || "")
-//   .split(",")
-//   .map((s) => s.trim())
-//   .filter(Boolean);
-// console.log("ALLOWED:", allowed);
-
-const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS,
-  optionsSuccessStatus: 200,
-};
-app.use(cors(corsOptions));
-// app.use(cors());
+const allowed = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow requests with no origin (curl, postman) - adjust if you want to block them
+      if (!origin) return callback(null, true);
+      if (allowed.indexOf(origin) !== -1) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS not allowed"), false);
+    },
+  })
+);
 
 // rate limit for protection
 const limiter = rateLimit({
