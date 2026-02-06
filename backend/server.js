@@ -7,9 +7,6 @@ import morgan from "morgan";
 // Import altcha functions - adjust names to match the package API
 import { createChallenge, verifySolution } from "altcha-lib";
 
-const hmacKey = process.env.ALTCHA_HMAC_KEY;
-console.log("hmacKey:", hmacKey);
-
 // dotenv.config();
 
 const app = express();
@@ -45,7 +42,7 @@ app.get("/api/altcha/challenge", async (req, res) => {
   console.log("Received get request", req.body);
   try {
     const challenge = await createChallenge({
-      hmacKey,
+      hmacKey: process.env.ALTCHA_HMAC_KEY,
       maxNumber: 100000,
     });
     res.json(challenge);
