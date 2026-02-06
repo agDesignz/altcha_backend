@@ -4,10 +4,7 @@ import "dotenv/config";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
-// Import altcha functions - adjust names to match the package API
 import { createChallenge, verifySolution } from "altcha-lib";
-
-// dotenv.config();
 
 const app = express();
 app.use(helmet());
@@ -25,12 +22,13 @@ const corsOptions = {
   origin: process.env.ALLOWED_ORIGINS,
   optionsSuccessStatus: 200,
 };
-
 app.use(cors(corsOptions));
+// app.use(cors());
+
 // rate limit for protection
 const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 30, // adjust as needed
+  windowMs: 60 * 1000,
+  max: 30,
 });
 app.use(limiter);
 
@@ -53,26 +51,26 @@ app.get("/api/altcha/challenge", async (req, res) => {
 });
 
 // Optional: verify endpoint - when your form is submitted, post token here
-// app.post("/api/altcha/verify", async (req, res) => {
-//   console.log("POST - req:", req.body);
-//   try {
-//     const { token, extra } = req.body; // token from client (altcha payload)
-//     // call the lib's verify function - adapt API name/params to altcha-lib
-//     const valid = await verifySolution({
-//       secret: process.env.ALTCHA_SECRET,
-//       token,
-//       extra, // optional: context like user/ip
-//     });
-//     if (valid && valid.success) {
-//       res.json({ success: true });
-//     } else {
-//       res.status(400).json({ success: false, detail: valid });
-//     }
-//   } catch (err) {
-//     console.error("verifySolution error:", err);
-//     res.status(500).json({ error: "Verification failed" });
-//   }
-// });
+app.post("/api/altcha/verify", async (req, res) => {
+  console.log("POST - req:", req.body);
+  try {
+    const { token, extra } = req.body; // token from client (altcha payload)
+    // call the lib's verify function - adapt API name/params to altcha-lib
+    const valid = await verifySolution({
+      secret: process.env.ALTCHA_SECRET,
+      token,
+      extra, // optional: context like user/ip
+    });
+    if (valid && valid.success) {
+      res.json({ success: true });
+    } else {
+      res.status(400).json({ success: false, detail: valid });
+    }
+  } catch (err) {
+    console.error("verifySolution error:", err);
+    res.status(500).json({ error: "Verification failed" });
+  }
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
