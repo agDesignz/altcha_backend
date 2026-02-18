@@ -44,7 +44,7 @@ app.get("/api/altcha/challenge", async (req, res) => {
   try {
     const challenge = await createChallenge({
       hmacKey: process.env.ALTCHA_HMAC_KEY,
-      maxNumber: 100000,
+      maxnumber: 100000,
     });
     res.json(challenge);
   } catch (err) {
@@ -55,16 +55,17 @@ app.get("/api/altcha/challenge", async (req, res) => {
 
 // Optional: verify endpoint - when your form is submitted, post token here
 app.post("/api/altcha/verify", async (req, res) => {
-  console.log("POST - req:", req.body);
   try {
+    const hmacKey = process.env.ALTCHA_HMAC_KEY;
     const { token, extra } = req.body; // token from client (altcha payload)
     // call the lib's verify function - adapt API name/params to altcha-lib
-    const valid = await verifySolution({
-      secret: process.env.ALTCHA_SECRET,
+    const valid = await verifySolution(
       token,
-      extra, // optional: context like user/ip
-    });
-    if (valid && valid.success) {
+      hmacKey
+      // extra, // optional: context like user/ip
+    );
+    console.log("valid:", valid);
+    if (valid) {
       res.json({ success: true });
     } else {
       res.status(400).json({ success: false, detail: valid });
