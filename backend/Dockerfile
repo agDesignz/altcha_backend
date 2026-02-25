@@ -5,9 +5,10 @@ FROM node:20-alpine
 WORKDIR /usr/src/app
 
 # Install app dependencies
-COPY package.json yarn.lock ./
+COPY ./package.json ./
+COPY ./yarn.lock ./
 # if using npm: copy package-lock.json
-RUN yarn install --production
+RUN yarn install
 
 # Bundle app source
 COPY . .
@@ -20,4 +21,4 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s \
   CMD wget -qO- http://localhost:4000/health || exit 1
 
-CMD ["node", "server.js"]
+CMD ["yarn", "dev"]
