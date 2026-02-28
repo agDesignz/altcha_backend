@@ -55,9 +55,12 @@ app.get("/health", (req, res) => res.json({ ok: true }));
 
 // Generate challenge
 app.get("/api/v1/altcha/challenge", async (req, res) => {
+  console.log("REQ -------->", req.header);
+  const site = req.query.site;
+  const hmacKey = process.env[`ALTCHA_KEY_${site}`];
   try {
     const challenge = await createChallenge({
-      hmacKey: process.env.ALTCHA_HMAC_KEY,
+      hmacKey,
       maxnumber: 100000,
       expires: new Date(Date.now() + 5 * 60 * 1000),
       params: {
@@ -74,8 +77,9 @@ app.get("/api/v1/altcha/challenge", async (req, res) => {
 // Optional: verify endpoint - when your form is submitted, post token here
 app.post("/api/v1/altcha/verify", async (req, res) => {
   try {
-    const hmacKey = process.env.ALTCHA_HMAC_KEY;
-    const { token } = req.body; // token from client (altcha payload)
+    const { token, site } = req.body; // token from client (altcha payload)
+    const hmacKey = process.env[`ALTCHA_KEY_${site}`];
+    console.log("KEY:", hmacKey);
 
     if (!token) {
       return res.status(400).json({ success: false, reason: "No token" });
