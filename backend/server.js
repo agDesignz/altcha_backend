@@ -85,6 +85,18 @@ const hashPayload = function (payload) {
   return crypto.createHash("sha256").update(payload).digest("hex");
 };
 
+const checkRateLimit = async (site, ip, maxRequests = 20, windowSec = 60) => {
+  const key = `altcha:rate:${site}:${ip}`;
+
+  const count = await redis.incr(key);
+
+  if (count === 1) {
+    await redis.expire(key, windowSec);
+  }
+
+  return count <= maxRequests;
+};
+
 app.post("/api/v1/altcha/verify", async (req, res) => {
   try {
     const { token, site } = req.body;
@@ -96,6 +108,15 @@ app.post("/api/v1/altcha/verify", async (req, res) => {
     const hmacKey = process.env[`ALTCHA_KEY_${site}`];
     if (!hmacKey) {
       return res.status(400).json({ error: "Invalid site" });
+    }
+
+    // Per-site per-IP rate limiting
+    const allowed = await checkRateLimit(site, req.ip, 20, 60);
+
+    if (!allowed) {
+      return res.status(429).json({
+        error: "Too many verification attempts",
+      });
     }
 
     // VERIFY TOKEN
