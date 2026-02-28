@@ -48,7 +48,7 @@ app.use(
 // rate limit for protection
 const limiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 30,
+  max: 500,
 });
 app.use(limiter);
 
@@ -97,6 +97,17 @@ const checkRateLimit = async (site, ip, maxRequests = 20, windowSec = 60) => {
   return count <= maxRequests;
 };
 
+function logSecurityEvent(event, details = {}) {
+  const logEntry = {
+    type: "security_event",
+    event,
+    timestamp: new Date().toISOString(),
+    ...details,
+  };
+
+  console.warn(JSON.stringify(logEntry));
+}
+
 app.post("/api/v1/altcha/verify", async (req, res) => {
   try {
     const { token, site } = req.body;
@@ -107,6 +118,10 @@ app.post("/api/v1/altcha/verify", async (req, res) => {
 
     const hmacKey = process.env[`ALTCHA_KEY_${site}`];
     if (!hmacKey) {
+      logSecurityEvent("invalid_site_attempt", {
+        site,
+        ip: req.ip,
+      });
       return res.status(400).json({ error: "Invalid site" });
     }
 
@@ -114,6 +129,10 @@ app.post("/api/v1/altcha/verify", async (req, res) => {
     const allowed = await checkRateLimit(site, req.ip, 20, 60);
 
     if (!allowed) {
+      logSecurityEvent("rate_limit_exceeded", {
+        site,
+        ip: req.ip,
+      });
       return res.status(429).json({
         error: "Too many verification attempts",
       });
@@ -138,6 +157,10 @@ app.post("/api/v1/altcha/verify", async (req, res) => {
     });
 
     if (result === null) {
+      logSecurityEvent("replay_detected", {
+        site,
+        ip: req.ip,
+      });
       return res.status(400).json({ error: "Replay detected" });
     }
 
@@ -145,6 +168,11 @@ app.post("/api/v1/altcha/verify", async (req, res) => {
     const params = extractParams(token);
 
     if (params.ip !== req.ip) {
+      logSecurityEvent("ip_mismatch", {
+        site,
+        ip: req.ip,
+        tokenIp: params.ip,
+      });
       return res.status(403).json({
         success: false,
         reason: "IP mismatch",
