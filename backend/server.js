@@ -5,8 +5,23 @@ import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
 import { createChallenge, verifySolution, extractParams } from "altcha-lib";
+import { createClient } from "redis";
+import crypto from "crypto";
 
 const app = express();
+
+// Connect to Redis:
+const redis = createClient({
+  url: process.env.REDIS_URL || "redis://redis:6379",
+});
+
+redis.on("error", (err) => {
+  console.error("Redis error:", err);
+});
+
+await redis.connect();
+
+// End Connect to Redis
 
 app.set("trust proxy", 1); // for Cooligy reverse proxy
 
@@ -37,27 +52,19 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Keeping track of used tokens
-const usedTokens = new Set();
-console.log(usedTokens);
-
-function markTokenUsed(token) {
-  console.log(
-    "Marking Used Token. Let's see if something changes:",
-    usedTokens
-  );
-  usedTokens.add(token);
-  setTimeout(() => usedTokens.delete(token), 5 * 60 * 1000);
-}
-
 // Health check
 app.get("/health", (req, res) => res.json({ ok: true }));
 
 // Generate challenge
 app.get("/api/v1/altcha/challenge", async (req, res) => {
-  console.log("REQ -------->", req.header);
   const site = req.query.site;
+  if (!site) {
+    return res.status(400).json({ error: "Missing site" });
+  }
   const hmacKey = process.env[`ALTCHA_KEY_${site}`];
+  if (!hmacKey) {
+    return res.status(400).json({ error: "Invalid site" });
+  }
   try {
     const challenge = await createChallenge({
       hmacKey,
@@ -74,38 +81,54 @@ app.get("/api/v1/altcha/challenge", async (req, res) => {
   }
 });
 
-// Optional: verify endpoint - when your form is submitted, post token here
+const hashPayload = function (payload) {
+  return crypto.createHash("sha256").update(payload).digest("hex");
+};
+
 app.post("/api/v1/altcha/verify", async (req, res) => {
   try {
-    const { token, site } = req.body; // token from client (altcha payload)
+    const { token, site } = req.body;
+
+    if (!token || !site) {
+      return res.status(400).json({ error: "Missing token or site" });
+    }
+
     const hmacKey = process.env[`ALTCHA_KEY_${site}`];
-    console.log("KEY:", hmacKey);
-
-    if (!token) {
-      return res.status(400).json({ success: false, reason: "No token" });
+    if (!hmacKey) {
+      return res.status(400).json({ error: "Invalid site" });
     }
 
-    if (usedTokens.has(token)) {
-      return res
-        .status(403)
-        .json({ success: false, reason: "Replay detected" });
-    }
-
+    // VERIFY TOKEN
     const valid = await verifySolution(token, hmacKey, true);
 
     if (!valid) {
-      return res
-        .status(400)
-        .json({ success: false, reason: "Unable to verify solution" });
+      return res.status(400).json({
+        success: false,
+        reason: "Unable to verify solution",
+      });
     }
 
+    // REDIS REPLAY VERIFICATION
+    const tokenId = hashPayload(token);
+
+    const result = await redis.set(`altcha:${site}:used:${tokenId}`, "1", {
+      EX: 300, // match challenge expiration
+      NX: true,
+    });
+
+    if (result === null) {
+      return res.status(400).json({ error: "Replay detected" });
+    }
+
+    // VERIFY IP
     const params = extractParams(token);
 
     if (params.ip !== req.ip) {
-      return res.status(403).json({ success: false, reason: "IP mismatch" });
+      return res.status(403).json({
+        success: false,
+        reason: "IP mismatch",
+      });
     }
-
-    markTokenUsed(token);
 
     res.json({ success: true });
   } catch (err) {
