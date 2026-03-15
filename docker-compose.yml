@@ -13,3 +13,8 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+
+  redis-test:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
