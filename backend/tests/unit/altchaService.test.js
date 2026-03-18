@@ -1,6 +1,6 @@
 import { describe, test, expect, jest, beforeEach } from "@jest/globals";
 import { createAltchaService } from "../../src/services/altchaService.js";
-import * as altcha from "altcha-lib";
+// import * as altcha from "altcha-lib";
 
 describe("altchaService", () => {
   let redis;
@@ -19,13 +19,16 @@ describe("altchaService", () => {
       checkRateLimit: jest.fn(),
     };
 
+    const verifySolution = jest.fn().mockResolvedValue(true);
+
     service = createAltchaService({
       redis,
       logger,
       rateLimitService,
+      verifySolution,
     });
 
-    jest.spyOn(altcha, "verifySolution").mockResolvedValue(true);
+    // jest.spyOn(altcha, "verifySolution").mockResolvedValue(true);
   });
 
   test("rejects when rate limit exceeded", async () => {

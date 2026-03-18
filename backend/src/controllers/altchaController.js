@@ -53,7 +53,11 @@ export function createAltchaController({ altchaService, logger }) {
 
       res.json(result);
     } catch (err) {
-      res.status(400).json({ error: err.message });
+      const status = err.status || 500;
+
+      res.status(status).json({
+        error: err.message || "Internal server error",
+      });
     }
   }
 

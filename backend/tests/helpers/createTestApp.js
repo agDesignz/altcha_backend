@@ -11,10 +11,14 @@ export async function createTestApp(redis) {
 
   const rateLimitService = createRateLimitService({ redis });
 
+  // Mock verifySolution
+  const mockVerifySolution = jest.fn().mockResolvedValue(true);
+
   const altchaService = createAltchaService({
     redis,
     logger,
     rateLimitService,
+    verifySolution: mockVerifySolution,
   });
 
   const controller = createAltchaController({

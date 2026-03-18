@@ -1,19 +1,28 @@
-import { verifySolution, extractParams } from "altcha-lib";
+import { verifySolution as altchaVerify, extractParams } from "altcha-lib";
 import { hashPayload } from "../utils/hashPayload.js";
 
-export function createAltchaService({ redis, logger, rateLimitService }) {
+export function createAltchaService({
+  redis,
+  logger,
+  rateLimitService,
+  verifySolution = altchaVerify,
+}) {
   async function verifyToken(token, site, ip, hmacKey) {
     const allowed = await rateLimitService.checkRateLimit(site, ip);
 
     if (!allowed) {
       logger("rate_limit_exceeded", { site, ip });
-      throw new Error("Too many verification attempts");
+      const err = new Error("Too many verification attempts");
+      err.status = 429;
+      throw err;
     }
 
     const valid = await verifySolution(token, hmacKey, true);
 
     if (!valid) {
-      throw new Error("Unable to verify solution");
+      const err = new Error("Unable to verify solution");
+      err.status = 400;
+      throw err;
     }
 
     const tokenId = hashPayload(token);
@@ -25,14 +34,18 @@ export function createAltchaService({ redis, logger, rateLimitService }) {
 
     if (result === null) {
       logger("replay_detected", { site, ip });
-      throw new Error("Replay detected");
+      const err = new Error("Replay detected");
+      err.status = 400;
+      throw err;
     }
 
     const params = extractParams(token);
 
     if (params.ip !== ip) {
       logger("ip_mismatch", { site, ip, tokenIp: params.ip });
-      throw new Error("IP mismatch");
+      const err = new Error("IP mismatch");
+      err.status = 403;
+      throw err;
     }
 
     return { success: true };

@@ -1,3 +1,4 @@
+import "dotenv/config";
 import {
   describe,
   test,
@@ -8,6 +9,8 @@ import {
 } from "@jest/globals";
 import request from "supertest";
 
+// import { mockAltcha } from "../helpers/mockAltcha.js";
+// mockAltcha();
 import { createTestRedis } from "../helpers/createTestRedis.js";
 import { createTestApp } from "../helpers/createTestApp.js";
 
@@ -16,6 +19,7 @@ let app;
 let logger;
 
 beforeAll(async () => {
+  // process.env.ALTCHA_KEY_portfolio = "test_key";
   redis = await createTestRedis();
 
   const testApp = await createTestApp(redis);
@@ -79,6 +83,8 @@ describe("ALTCHA verify endpoint", () => {
       site: "portfolio",
       token: "overflow",
     });
+
+    console.log(blocked.error);
 
     expect(blocked.statusCode).toBe(429);
   });
