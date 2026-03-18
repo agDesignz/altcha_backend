@@ -84,8 +84,6 @@ describe("ALTCHA verify endpoint", () => {
       token: "overflow",
     });
 
-    console.log(blocked.error);
-
     expect(blocked.statusCode).toBe(429);
   });
 
