@@ -3,18 +3,12 @@ services:
     build: ./backend
     ports:
       - "4000:4000"
+    depends_on:
+      - redis
     restart: unless-stopped
-    volumes:
-      - ./backend:/usr/src/app
-      - /usr/src/app/node_modules
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
     restart: unless-stopped
-
-  redis-test:
-    image: redis:7-alpine
-    ports:
-      - "6380:6379"

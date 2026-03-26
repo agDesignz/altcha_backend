@@ -4,6 +4,6 @@ const PORT = process.env.PORT || 4000;
 
 const { app } = await createApp();
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Altcha backend listening on ${PORT}`);
 });

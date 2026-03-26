@@ -14,11 +14,6 @@ RUN yarn install
 COPY . .
 
 # Expose port
-ENV PORT=4000
 EXPOSE 4000
 
-# Health check (optional)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s \
-  CMD wget -qO- http://localhost:4000/health || exit 1
-
-CMD ["yarn", "dev"]
+CMD ["node", "src/server.js"]
